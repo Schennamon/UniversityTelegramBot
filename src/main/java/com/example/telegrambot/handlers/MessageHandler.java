@@ -23,34 +23,71 @@ public class MessageHandler implements Handler<Message>{
     private final Lesson lesson;
     private final Cache cache;
 
-    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Lesson lesson, Cache cache) {
+    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson) {
         this.messageSender = messageSender;
         this.keyboardHandler = keyboardHandler;
-        this.lesson = lesson;
         this.cache = cache;
+        this.lesson = lesson;
+        this.lesson.setPosition(Position.NONE);
+    }
+
+    public void outputDayLessons(String day, Iterable<Lesson> lessons, StringBuilder sb){
+        int count =1;
+        sb.append("\n" + day + ":\n");
+        for(Lesson printLesson : lessons){
+            if (printLesson.getDay().equals(day)) {
+                sb.append("\t" + count + ". " + printLesson.getLesson() + ", ");
+                sb.append(printLesson.getFormat() + ", ");
+                sb.append(printLesson.getTeacherName() + ", ");
+                sb.append(printLesson.getLink() + "\n");
+                count++;
+            }
+        }
     }
 
     @Override
     public void choose(Message message) {
         if(message.hasText()){
             SendMessage sm = new SendMessage();
-
             if(lesson.getPosition() != null) {
+
                 switch (lesson.getPosition()) {
+
+                    // Positions for filling in data about a new lesson
                     case INPUT_LESSON -> {
                         cache.setLessonTitle(message.getText());
-                        sm.setText("Введите день пары:");
+                        sm.setText("Выберите формат пары:");
+                        lesson.setPosition(Position.INPUT_FORMAT);
+                    }
+                    case INPUT_FORMAT -> {
+                        cache.setFormat(message.getText());
+                        sm.setText("Выберите день:");
                         lesson.setPosition(Position.INPUT_DAY);
                     }
                     case INPUT_DAY -> {
                         cache.setDay(message.getText());
+                        sm.setText("Введите имя преподавателя:");
+                        lesson.setPosition(Position.INPUT_TEACHER);
+                    }
+                    case INPUT_TEACHER -> {
+                        cache.setTeacherName(message.getText());
+                        sm.setText("Вставьте ссылку на пару:");
+                        lesson.setPosition(Position.INPUT_LINK);
+                    }
+                    case INPUT_LINK -> {
+                        cache.setLink(message.getText());
                         Lesson newLesson = new Lesson();
                         newLesson.setLesson(cache.getLessonTitle());
+                        newLesson.setFormat(cache.getFormat());
                         newLesson.setDay(cache.getDay());
+                        newLesson.setTeacherName(cache.getTeacherName());
+                        newLesson.setLink(cache.getLink());
                         postRepository.save(newLesson);
-                        sm.setText("Предмет был добавлен в список");
                         lesson.setPosition(Position.NONE);
+                        sm.setText("Предмет был добавлен в список");
                     }
+
+                    // Position for selecting an item to remove
                     case INPUT_NUMBER_FOR_REMOVE -> {
                         int count = 1;
                         var hashMap = new HashMap();
@@ -62,17 +99,16 @@ public class MessageHandler implements Handler<Message>{
                         }
                         Lesson lessonRemove = postRepository.findById((Long) hashMap.get(num)).orElseThrow();
                         postRepository.delete(lessonRemove);
-                        sm.setText("Предмет был удалён из списка");
                         lesson.setPosition(Position.NONE);
+                        sm.setText("Предмет был удалён из списка");
                     }
+
+                    // Position to display the day's activities
                     case LEARN_THE_LESSONS_OF_THE_DAY -> {
                         Iterable<Lesson> lessons = postRepository.findAll();
-                        StringBuilder sb = new StringBuilder("Список дня:\n");
-                        for (Lesson ls : lessons) {
-                            if(ls.getDay().equals(message.getText())) {
-                                sb.append(ls.getLesson() + "\n");
-                            }
-                        }
+                        StringBuilder sb = new StringBuilder();
+                        outputDayLessons(message.getText(), lessons, sb);
+                        lesson.setPosition(Position.NONE);
                         sm.setText(sb.toString());
                     }
                 }
@@ -86,14 +122,16 @@ public class MessageHandler implements Handler<Message>{
                 sm.setText("Введите предмет: ");
             }
             if (message.getText().equals("/all")) {
-                int count = 1;
                 Iterable<Lesson> lessons = postRepository.findAll();
                 StringBuilder sb = new StringBuilder();
-                sb.append("Список всех пар: \n");
-                for (Lesson printLesson : lessons) {
-                    sb.append(count + ". " + printLesson.getLesson() + "\n");
-                    count++;
-                }
+
+                outputDayLessons("Понедельник", lessons, sb);
+                outputDayLessons("Вторник", lessons, sb);
+                outputDayLessons("Среда", lessons, sb);
+                outputDayLessons("Четверг", lessons, sb);
+                outputDayLessons("Пятница", lessons, sb);
+                outputDayLessons("Суббота", lessons, sb);
+
                 sm.setText(sb.toString());
             }
             if (message.getText().equals("/remove")) {
@@ -111,10 +149,7 @@ public class MessageHandler implements Handler<Message>{
             }
             if (message.getText().equals("/day")) {
                 lesson.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
-                messageSender.sendMessage(SendMessage.builder()
-                        .text("Введите день, чтобы узнать пары: ")
-                        .chatId(String.valueOf(message.getChatId()))
-                        .build());
+                sm.setText("Введите день, чтобы узнать пары: ");
             }
 
 

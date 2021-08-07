@@ -5,7 +5,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class Cache {
 
-    String lessonTitle, day, teacherName, link;
+    private String lessonTitle, day, teacherName, link, format;
+
+    public String getFormat() {
+        return format;
+    }
+
+    public void setFormat(String format) {
+        this.format = format;
+    }
 
     public String getLessonTitle() {
         return lessonTitle;
