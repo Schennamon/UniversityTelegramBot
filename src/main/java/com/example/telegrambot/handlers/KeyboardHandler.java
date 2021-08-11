@@ -2,6 +2,7 @@ package com.example.telegrambot.handlers;
 
 import com.example.telegrambot.domain.Lesson;
 import com.example.telegrambot.domain.Position;
+import com.example.telegrambot.domain.User;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -10,16 +11,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.util.ArrayList;
 
 @Component
-public class KeyboardHandler implements Handler<SendMessage>{
-    private final Lesson lesson;
-
-    public KeyboardHandler(Lesson lesson) {
-        this.lesson = lesson;
-    }
-
-    @Override
-    public void choose(SendMessage sm) {
-        if(lesson.getPosition().equals(Position.INPUT_DAY) || lesson.getPosition().equals(Position.LEARN_THE_LESSONS_OF_THE_DAY)){
+public class KeyboardHandler{
+    public void choose(SendMessage sm, User user){
+        if(user.getPosition().equals(Position.INPUT_DAY) || user.getPosition().equals(Position.LEARN_THE_LESSONS_OF_THE_DAY)){
             var markup = new ReplyKeyboardMarkup();
             var keyboardRows = new ArrayList<KeyboardRow>();
             var row1 = new KeyboardRow();
@@ -36,7 +30,7 @@ public class KeyboardHandler implements Handler<SendMessage>{
             markup.setResizeKeyboard(true);
             sm.setReplyMarkup(markup);
         }
-        else if(lesson.getPosition().equals(Position.INPUT_FORMAT)){
+        else if(user.getPosition().equals(Position.INPUT_FORMAT)){
             var markup = new ReplyKeyboardMarkup();
             var keyboardRows = new ArrayList<KeyboardRow>();
             var row1 = new KeyboardRow();

@@ -3,35 +3,46 @@ package com.example.telegrambot.handlers;
 import com.example.telegrambot.cache.Cache;
 import com.example.telegrambot.domain.Lesson;
 import com.example.telegrambot.domain.Position;
+import com.example.telegrambot.domain.User;
 import com.example.telegrambot.messagesender.MessageSender;
 import com.example.telegrambot.repository.PostRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.telegrambot.repository.UserRepository;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 @Component
 public class MessageHandler implements Handler<Message>{
 
-    @Autowired
-    private PostRepository postRepository;
-
+    private final PostRepository postRepository;
+    private final UserRepository userRepository;
     private final MessageSender messageSender;
     private final KeyboardHandler keyboardHandler;
     private final Lesson lesson;
     private final Cache cache;
 
-    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson) {
+    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson, PostRepository postRepository, UserRepository userRepository) {
         this.messageSender = messageSender;
         this.keyboardHandler = keyboardHandler;
         this.cache = cache;
         this.lesson = lesson;
         this.lesson.setPosition(Position.NONE);
+        this.postRepository = postRepository;
+        this.userRepository = userRepository;
     }
 
-    public void outputDayLessons(String day, Iterable<Lesson> lessons, StringBuilder sb){
+    private void registrationUser(Message message){
+        User user = new User();
+        user.setUsername(message.getFrom().getUserName());
+        user.setId(message.getChatId());
+        user.setPosition(Position.NONE);
+        userRepository.save(user);
+    }
+
+    private void outputDayLessons(String day, Iterable<Lesson> lessons, StringBuilder sb){
         int count =1;
         sb.append("\n" + day + ":\n");
         for(Lesson printLesson : lessons){
@@ -47,32 +58,38 @@ public class MessageHandler implements Handler<Message>{
 
     @Override
     public void choose(Message message) {
+        Optional<User> userOptional = userRepository.findById(message.getChatId());
+        User user = userOptional.get();
+
         if(message.hasText()){
             SendMessage sm = new SendMessage();
-            if(lesson.getPosition() != null) {
-
-                switch (lesson.getPosition()) {
+            if(user.getPosition() != null && user.getPosition() != Position.NONE) {
+                switch (user.getPosition()) {
 
                     // Positions for filling in data about a new lesson
                     case INPUT_LESSON -> {
                         cache.setLessonTitle(message.getText());
+                        user.setPosition(Position.INPUT_FORMAT);
+                        userRepository.save(user);
                         sm.setText("Выберите формат пары:");
-                        lesson.setPosition(Position.INPUT_FORMAT);
                     }
                     case INPUT_FORMAT -> {
                         cache.setFormat(message.getText());
+                        user.setPosition(Position.INPUT_DAY);
+                        userRepository.save(user);
                         sm.setText("Выберите день:");
-                        lesson.setPosition(Position.INPUT_DAY);
                     }
                     case INPUT_DAY -> {
                         cache.setDay(message.getText());
+                        user.setPosition(Position.INPUT_TEACHER);
+                        userRepository.save(user);
                         sm.setText("Введите имя преподавателя:");
-                        lesson.setPosition(Position.INPUT_TEACHER);
                     }
                     case INPUT_TEACHER -> {
                         cache.setTeacherName(message.getText());
+                        user.setPosition(Position.INPUT_LINK);
+                        userRepository.save(user);
                         sm.setText("Вставьте ссылку на пару:");
-                        lesson.setPosition(Position.INPUT_LINK);
                     }
                     case INPUT_LINK -> {
                         cache.setLink(message.getText());
@@ -83,7 +100,8 @@ public class MessageHandler implements Handler<Message>{
                         newLesson.setTeacherName(cache.getTeacherName());
                         newLesson.setLink(cache.getLink());
                         postRepository.save(newLesson);
-                        lesson.setPosition(Position.NONE);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
                         sm.setText("Предмет был добавлен в список");
                     }
 
@@ -99,7 +117,8 @@ public class MessageHandler implements Handler<Message>{
                         }
                         Lesson lessonRemove = postRepository.findById((Long) hashMap.get(num)).orElseThrow();
                         postRepository.delete(lessonRemove);
-                        lesson.setPosition(Position.NONE);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
                         sm.setText("Предмет был удалён из списка");
                     }
 
@@ -108,7 +127,8 @@ public class MessageHandler implements Handler<Message>{
                         Iterable<Lesson> lessons = postRepository.findAll();
                         StringBuilder sb = new StringBuilder();
                         outputDayLessons(message.getText(), lessons, sb);
-                        lesson.setPosition(Position.NONE);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
                         sm.setText(sb.toString());
                     }
                 }
@@ -116,9 +136,11 @@ public class MessageHandler implements Handler<Message>{
 
             if (message.getText().equals("/start")) {
                 sm.setText("Welcome to bot!");
+                registrationUser(message);
             }
             if (message.getText().equals("/add")) {
-                lesson.setPosition(Position.INPUT_LESSON);
+                user.setPosition(Position.INPUT_LESSON);
+                userRepository.save(user);
                 sm.setText("Введите предмет: ");
             }
             if (message.getText().equals("/all")) {
@@ -138,7 +160,8 @@ public class MessageHandler implements Handler<Message>{
                 int count = 1;
                 var sb = new StringBuilder();
                 Iterable<Lesson> lessons = postRepository.findAll();
-                lesson.setPosition(Position.INPUT_NUMBER_FOR_REMOVE);
+                user.setPosition(Position.INPUT_NUMBER_FOR_REMOVE);
+                userRepository.save(user);
 
                 sb.append("Выберите пару, которую хотите удалить: \n");
                 for (Lesson printLesson : lessons) {
@@ -148,13 +171,14 @@ public class MessageHandler implements Handler<Message>{
                 sm.setText(sb.toString());
             }
             if (message.getText().equals("/day")) {
-                lesson.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
+                user.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
+                userRepository.save(user);
                 sm.setText("Введите день, чтобы узнать пары: ");
             }
 
 
             sm.setChatId(String.valueOf(message.getChatId()));
-            keyboardHandler.choose(sm);
+            keyboardHandler.choose(sm, user);
             messageSender.sendMessage(sm);
         }
     }
