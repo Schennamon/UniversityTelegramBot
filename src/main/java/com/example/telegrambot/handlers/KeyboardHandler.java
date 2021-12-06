@@ -1,6 +1,5 @@
 package com.example.telegrambot.handlers;
 
-import com.example.telegrambot.domain.Lesson;
 import com.example.telegrambot.domain.Position;
 import com.example.telegrambot.domain.User;
 import org.springframework.stereotype.Component;

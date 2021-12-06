@@ -39,7 +39,6 @@ public class MessageHandler implements Handler<Message>{
         user.setId(message.getChatId());
         user.setPosition(Position.NONE);
         userRepository.save(user);
-        System.out.println(user.getUsername());
     }
 
     private void outputDayLessons(String day, Iterable<Lesson> lessons, StringBuilder sb){
@@ -58,105 +57,112 @@ public class MessageHandler implements Handler<Message>{
 
     @Override
     public void choose(Message message) {
-        if(userRepository.existsById(message.getChatId())) {
-            Optional<User> userOptional = userRepository.findById(message.getChatId());
-            User user = userOptional.get();
-            if (message.hasText()) {
-                SendMessage sm = new SendMessage();
-                if (user.getPosition() != null && user.getPosition() != Position.NONE) {
-                    switch (user.getPosition()) {
+        if(!userRepository.existsById(message.getChatId())){
+            registrationUser(message);
+        }
 
-                        // Positions for filling in data about a new lesson
-                        case INPUT_LESSON -> {
-                            cache.setLessonTitle(message.getText());
-                            user.setPosition(Position.INPUT_FORMAT);
-                            userRepository.save(user);
-                            sm.setText("Выберите формат пары:");
-                        }
-                        case INPUT_FORMAT -> {
-                            cache.setFormat(message.getText());
-                            user.setPosition(Position.INPUT_DAY);
-                            userRepository.save(user);
-                            sm.setText("Выберите день:");
-                        }
-                        case INPUT_DAY -> {
-                            cache.setDay(message.getText());
-                            user.setPosition(Position.INPUT_TEACHER);
-                            userRepository.save(user);
-                            sm.setText("Введите имя преподавателя:");
-                        }
-                        case INPUT_TEACHER -> {
-                            cache.setTeacherName(message.getText());
-                            user.setPosition(Position.INPUT_LINK);
-                            userRepository.save(user);
-                            sm.setText("Вставьте ссылку на пару:");
-                        }
-                        case INPUT_LINK -> {
-                            cache.setLink(message.getText());
-                            Lesson newLesson = new Lesson();
-                            newLesson.setLesson(cache.getLessonTitle());
-                            newLesson.setFormat(cache.getFormat());
-                            newLesson.setDay(cache.getDay());
-                            newLesson.setTeacherName(cache.getTeacherName());
-                            newLesson.setLink(cache.getLink());
-                            postRepository.save(newLesson);
-                            user.setPosition(Position.NONE);
-                            userRepository.save(user);
-                            sm.setText("Предмет был добавлен в список");
-                        }
+        Optional<User> userOptional = userRepository.findById(message.getChatId());
+        User user = userOptional.orElseGet(User::new);
+        if (message.hasText()) {
+            SendMessage sm = new SendMessage();
+            if (user.getPosition() != null && user.getPosition() != Position.NONE) {
+                switch (user.getPosition()) {
 
-                        // Position for selecting an item to remove
-                        case INPUT_NUMBER_FOR_REMOVE -> {
-                            int count = 1;
-                            var hashMap = new HashMap();
-                            var num = Integer.parseInt(message.getText());
-                            Iterable<Lesson> lessons = postRepository.findAll();
-                            for (Lesson printLesson : lessons) {
-                                hashMap.put(count, printLesson.getId());
-                                count++;
-                            }
-                            Lesson lessonRemove = postRepository.findById((Long) hashMap.get(num)).orElseThrow();
-                            postRepository.delete(lessonRemove);
-                            user.setPosition(Position.NONE);
-                            userRepository.save(user);
-                            sm.setText("Предмет был удалён из списка");
-                        }
+                    // Positions for filling in data about a new lesson
+                    case INPUT_LESSON -> {
+                        cache.setLessonTitle(message.getText());
+                        user.setPosition(Position.INPUT_FORMAT);
+                        userRepository.save(user);
+                        sm.setText("Выберите формат пары:");
+                    }
+                    case INPUT_FORMAT -> {
+                        cache.setFormat(message.getText());
+                        user.setPosition(Position.INPUT_DAY);
+                        userRepository.save(user);
+                        sm.setText("Выберите день:");
+                    }
+                    case INPUT_DAY -> {
+                        cache.setDay(message.getText());
+                        user.setPosition(Position.INPUT_TEACHER);
+                        userRepository.save(user);
+                        sm.setText("Введите имя преподавателя:");
+                    }
+                    case INPUT_TEACHER -> {
+                        cache.setTeacherName(message.getText());
+                        user.setPosition(Position.INPUT_LINK);
+                        userRepository.save(user);
+                        sm.setText("Вставьте ссылку на пару:");
+                    }
+                    case INPUT_LINK -> {
+                        cache.setLink(message.getText());
+                        Lesson newLesson = new Lesson();
+                        newLesson.setLesson(cache.getLessonTitle());
+                        newLesson.setFormat(cache.getFormat());
+                        newLesson.setDay(cache.getDay());
+                        newLesson.setTeacherName(cache.getTeacherName());
+                        newLesson.setLink(cache.getLink());
+                        postRepository.save(newLesson);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
+                        sm.setText("Предмет был добавлен в список");
+                    }
 
-                        // Position to display the day's activities
-                        case LEARN_THE_LESSONS_OF_THE_DAY -> {
-                            Iterable<Lesson> lessons = postRepository.findAll();
-                            StringBuilder sb = new StringBuilder();
-                            outputDayLessons(message.getText(), lessons, sb);
-                            user.setPosition(Position.NONE);
-                            userRepository.save(user);
-                            sm.setText(sb.toString());
+                    // Position for selecting an item to remove
+                    case INPUT_NUMBER_FOR_REMOVE -> {
+                        int count = 1;
+                        HashMap<Integer, Long> hashMap = new HashMap<>();
+                        var num = Integer.parseInt(message.getText());
+                        Iterable<Lesson> lessons = postRepository.findAll();
+                        for (Lesson printLesson : lessons) {
+                            hashMap.put(count, printLesson.getId());
+                            count++;
                         }
+                        Lesson lessonRemove = postRepository.findById(hashMap.get(num)).orElseThrow();
+                        postRepository.delete(lessonRemove);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
+                        sm.setText("Предмет был удалён из списка");
+                    }
+
+                    // Position to display the day's activities
+                    case LEARN_THE_LESSONS_OF_THE_DAY -> {
+                        Iterable<Lesson> lessons = postRepository.findAll();
+                        StringBuilder sb = new StringBuilder();
+                        outputDayLessons(message.getText(), lessons, sb);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
+                        sm.setText(sb.toString());
                     }
                 }
+            }
 
-                if (message.getText().equals("/start")) {
-                    sm.setText("Welcome to bot!");
-                    registrationUser(message);
-                }
-                if (message.getText().equals("/add")) {
+            if (message.getText().equals("/start")) {
+                sm.setText("Welcome to bot!");
+            }
+            if (message.getText().equals("/add")) {
+                if(user.isStatus()) {
                     user.setPosition(Position.INPUT_LESSON);
                     userRepository.save(user);
                     sm.setText("Введите предмет: ");
+                } else{
+                    sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
-                if (message.getText().equals("/all")) {
-                    Iterable<Lesson> lessons = postRepository.findAll();
-                    StringBuilder sb = new StringBuilder();
+            }
+            if (message.getText().equals("/all")) {
+                Iterable<Lesson> lessons = postRepository.findAll();
+                StringBuilder sb = new StringBuilder();
 
-                    outputDayLessons("Понедельник", lessons, sb);
-                    outputDayLessons("Вторник", lessons, sb);
-                    outputDayLessons("Среда", lessons, sb);
-                    outputDayLessons("Четверг", lessons, sb);
-                    outputDayLessons("Пятница", lessons, sb);
-                    outputDayLessons("Суббота", lessons, sb);
+                outputDayLessons("Понедельник", lessons, sb);
+                outputDayLessons("Вторник", lessons, sb);
+                outputDayLessons("Среда", lessons, sb);
+                outputDayLessons("Четверг", lessons, sb);
+                outputDayLessons("Пятница", lessons, sb);
+                outputDayLessons("Суббота", lessons, sb);
 
-                    sm.setText(sb.toString());
-                }
-                if (message.getText().equals("/remove")) {
+                sm.setText(sb.toString());
+            }
+            if (message.getText().equals("/remove")) {
+                if(user.isStatus()) {
                     int count = 1;
                     var sb = new StringBuilder();
                     Iterable<Lesson> lessons = postRepository.findAll();
@@ -169,25 +175,16 @@ public class MessageHandler implements Handler<Message>{
                         count++;
                     }
                     sm.setText(sb.toString());
+                } else {
+                    sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
-                if (message.getText().equals("/day")) {
-                    user.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
-                    userRepository.save(user);
-                    sm.setText("Введите день, чтобы узнать пары: ");
-                }
-
-
-                sm.setChatId(String.valueOf(message.getChatId()));
-                keyboardHandler.choose(sm, user);
-                messageSender.sendMessage(sm);
             }
-        }else{
-            registrationUser(message);
+            if (message.getText().equals("/day")) {
+                user.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
+                userRepository.save(user);
+                sm.setText("Введите день, чтобы узнать пары: ");
+            }
 
-            SendMessage sm = new SendMessage();
-            Optional<User> userOptional = userRepository.findById(message.getChatId());
-            User user = userOptional.get();
-            sm.setText("Welcome to bot!");
             sm.setChatId(String.valueOf(message.getChatId()));
             keyboardHandler.choose(sm, user);
             messageSender.sendMessage(sm);

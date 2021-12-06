@@ -12,6 +12,7 @@ public class User {
     private Long id;
     private String username;
     private Position position;
+    private boolean status = false;
 
     public Long getId() {
         return id;
@@ -35,5 +36,9 @@ public class User {
 
     public void setPosition(Position position) {
         this.position = position;
+    }
+
+    public boolean isStatus() {
+        return status;
     }
 }
