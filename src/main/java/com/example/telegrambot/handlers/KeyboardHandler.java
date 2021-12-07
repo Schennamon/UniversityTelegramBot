@@ -44,11 +44,14 @@ public class KeyboardHandler{
             var markup = new ReplyKeyboardMarkup();
             var keyboardRows = new ArrayList<KeyboardRow>();
             var row1 = new KeyboardRow();
+            var row2 = new KeyboardRow();
             row1.add("/day");
             row1.add("/all");
-            row1.add("/add");
-            row1.add("/remove");
+            row2.add("/add");
+            row2.add("/remove");
+            row2.add("/add_teacher");
             keyboardRows.add(row1);
+            keyboardRows.add(row2);
             markup.setKeyboard(keyboardRows);
             markup.setResizeKeyboard(true);
             sm.setReplyMarkup(markup);

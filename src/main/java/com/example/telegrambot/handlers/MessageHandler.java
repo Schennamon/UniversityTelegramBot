@@ -3,9 +3,11 @@ package com.example.telegrambot.handlers;
 import com.example.telegrambot.cache.Cache;
 import com.example.telegrambot.domain.Lesson;
 import com.example.telegrambot.domain.Position;
+import com.example.telegrambot.domain.Teacher;
 import com.example.telegrambot.domain.User;
 import com.example.telegrambot.messagesender.MessageSender;
 import com.example.telegrambot.repository.PostRepository;
+import com.example.telegrambot.repository.TeacherRepository;
 import com.example.telegrambot.repository.UserRepository;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -18,17 +20,19 @@ public class MessageHandler implements Handler<Message>{
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final TeacherRepository teacherRepository;
     private final MessageSender messageSender;
     private final KeyboardHandler keyboardHandler;
     private final Lesson lesson;
     private final Cache cache;
 
-    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson, PostRepository postRepository, UserRepository userRepository) {
+    public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson, PostRepository postRepository, UserRepository userRepository, TeacherRepository teacherRepository) {
         this.messageSender = messageSender;
         this.keyboardHandler = keyboardHandler;
         this.cache = cache;
         this.lesson = lesson;
         this.lesson.setPosition(Position.NONE);
+        this.teacherRepository = teacherRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
     }
@@ -133,6 +137,48 @@ public class MessageHandler implements Handler<Message>{
                         userRepository.save(user);
                         sm.setText(sb.toString());
                     }
+
+                    // Position for input teacher data
+                    case INPUT_TEACHER_FIRSTNAME -> {
+                        cache.setFirstName(message.getText());
+                        user.setPosition(Position.INPUT_TEACHER_LASTNAME);
+                        userRepository.save(user);
+                        sm.setText("Введите фамилию преподавателя");
+                    }
+                    case INPUT_TEACHER_LASTNAME -> {
+                        cache.setLastName(message.getText());
+                        user.setPosition(Position.INPUT_POSITION);
+                        userRepository.save(user);
+                        sm.setText("Введите должность преподавателя");
+                    }
+                    case INPUT_POSITION -> {
+                        cache.setPosition(message.getText());
+                        user.setPosition(Position.INPUT_PHONE_NUMBER);
+                        userRepository.save(user);
+                        sm.setText("Введите номер телефона преподавателя");
+                    }
+                    case INPUT_PHONE_NUMBER -> {
+                        cache.setPhoneNumber(message.getText());
+                        user.setPosition(Position.INPUT_EMAIL);
+                        userRepository.save(user);
+                        sm.setText("Введите почту преподавателя");
+                    }
+                    case INPUT_EMAIL -> {
+                        Teacher teacher = new Teacher();
+                        cache.setEmail(message.getText());
+                        teacher.setFirstName(cache.getFirstName());
+                        teacher.setLastName(cache.getLastName());
+                        teacher.setPosition(cache.getPosition());
+                        teacher.setPhoneNumber(cache.getPhoneNumber());
+                        teacher.setEmail(cache.getEmail());
+
+                        user.setPosition(Position.NONE);
+
+                        userRepository.save(user);
+                        teacherRepository.save(teacher);
+
+                        sm.setText("Преподаватель был добавлен в список");
+                    }
                 }
             }
 
@@ -183,6 +229,22 @@ public class MessageHandler implements Handler<Message>{
                 user.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
                 userRepository.save(user);
                 sm.setText("Введите день, чтобы узнать пары: ");
+            }
+            if(message.getText().equals("/add_teacher")){
+                if(user.isStatus()) {
+//                    Teacher teacher = new Teacher();
+//                    teacher.setFirstName("Ivan");
+//                    teacher.setLastName("Tolok");
+//                    teacher.setEmail("sdcsdc");
+//                    teacher.setPhoneNumber("050651");
+//                    teacherRepository.save(teacher);
+//                    sm.setText("Преподаватель был добавлен в список");
+                    user.setPosition(Position.INPUT_TEACHER_FIRSTNAME);
+                    userRepository.save(user);
+                    sm.setText("Введите имя преподавателя");
+                } else {
+                    sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
+                }
             }
 
             sm.setChatId(String.valueOf(message.getChatId()));
