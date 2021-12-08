@@ -129,7 +129,7 @@ public class MessageHandler implements Handler<Message>{
                     }
 
                     // Position to display the day's activities
-                    case LEARN_THE_LESSONS_OF_THE_DAY -> {
+                    case SELECTION_OF_THE_DAY_FOR_INPUT -> {
                         Iterable<Lesson> lessons = postRepository.findAll();
                         StringBuilder sb = new StringBuilder();
                         outputDayLessons(message.getText(), lessons, sb);
@@ -179,6 +179,22 @@ public class MessageHandler implements Handler<Message>{
 
                         sm.setText("Преподаватель был добавлен в список");
                     }
+                    // Position for selecting an item to remove
+                    case INPUT_TEACHER_NUMBER_FOR_REMOVE -> {
+                        int count = 1;
+                        HashMap<Integer, Long> hashMap = new HashMap<>();
+                        var num = Integer.parseInt(message.getText());
+                        Iterable<Teacher> teachers = teacherRepository.findAll();
+                        for (Teacher teacher : teachers) {
+                            hashMap.put(count, teacher.getId());
+                            count++;
+                        }
+                        Teacher teacherRemove = teacherRepository.findById(hashMap.get(num)).orElseThrow();
+                        teacherRepository.delete(teacherRemove);
+                        user.setPosition(Position.NONE);
+                        userRepository.save(user);
+                        sm.setText("Преподаватель был удалён из списка");
+                    }
                 }
             }
 
@@ -226,19 +242,12 @@ public class MessageHandler implements Handler<Message>{
                 }
             }
             if (message.getText().equals("/day")) {
-                user.setPosition(Position.LEARN_THE_LESSONS_OF_THE_DAY);
+                user.setPosition(Position.SELECTION_OF_THE_DAY_FOR_INPUT);
                 userRepository.save(user);
                 sm.setText("Введите день, чтобы узнать пары: ");
             }
             if(message.getText().equals("/add_teacher")){
                 if(user.isStatus()) {
-//                    Teacher teacher = new Teacher();
-//                    teacher.setFirstName("Ivan");
-//                    teacher.setLastName("Tolok");
-//                    teacher.setEmail("sdcsdc");
-//                    teacher.setPhoneNumber("050651");
-//                    teacherRepository.save(teacher);
-//                    sm.setText("Преподаватель был добавлен в список");
                     user.setPosition(Position.INPUT_TEACHER_FIRSTNAME);
                     userRepository.save(user);
                     sm.setText("Введите имя преподавателя");
@@ -246,6 +255,40 @@ public class MessageHandler implements Handler<Message>{
                     sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
             }
+            if(message.getText().equals("/all_teachers")){
+                int count = 1;
+                var sb = new StringBuilder();
+                Iterable<Teacher> teachers = teacherRepository.findAll();
+
+                for(Teacher printTeacher : teachers){
+                    sb.append("\n" + count + ". " + printTeacher.getLastName() + " " + printTeacher.getFirstName() +
+                            ", " + printTeacher.getPosition() + ", " + printTeacher.getPhoneNumber() +
+                            ", " + printTeacher.getEmail());
+                    count++;
+                }
+                sm.setText(sb.toString());
+            }
+            if(message.getText().equals("/remove_teacher")){
+                if (user.isStatus()) {
+                    int count = 1;
+                    var sb = new StringBuilder();
+                    Iterable<Teacher> teachers = teacherRepository.findAll();
+                    user.setPosition(Position.INPUT_TEACHER_NUMBER_FOR_REMOVE);
+                    userRepository.save(user);
+
+                    sb.append("Выберите преподавателя, которого хотите удалить: \n");
+                    for(Teacher printTeacher : teachers){
+                        sb.append("\n" + count + ". " + printTeacher.getLastName() + " " + printTeacher.getFirstName() +
+                                ", " + printTeacher.getPosition() + ", " + printTeacher.getPhoneNumber() +
+                                ", " + printTeacher.getEmail());
+                        count++;
+                    }
+                    sm.setText(sb.toString());
+                } else {
+                    sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
+                }
+            }
+
 
             sm.setChatId(String.valueOf(message.getChatId()));
             keyboardHandler.choose(sm, user);

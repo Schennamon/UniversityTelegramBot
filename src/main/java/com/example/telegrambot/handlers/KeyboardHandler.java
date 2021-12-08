@@ -12,7 +12,7 @@ import java.util.ArrayList;
 @Component
 public class KeyboardHandler{
     public void choose(SendMessage sm, User user){
-        if(user.getPosition().equals(Position.INPUT_DAY) || user.getPosition().equals(Position.LEARN_THE_LESSONS_OF_THE_DAY)){
+        if(user.getPosition().equals(Position.INPUT_DAY) || user.getPosition().equals(Position.SELECTION_OF_THE_DAY_FOR_INPUT)){
             var markup = new ReplyKeyboardMarkup();
             var keyboardRows = new ArrayList<KeyboardRow>();
             var row1 = new KeyboardRow();
@@ -47,9 +47,11 @@ public class KeyboardHandler{
             var row2 = new KeyboardRow();
             row1.add("/day");
             row1.add("/all");
+            row1.add("/all_teachers");
             row2.add("/add");
             row2.add("/remove");
             row2.add("/add_teacher");
+            row2.add("/remove_teacher");
             keyboardRows.add(row1);
             keyboardRows.add(row2);
             markup.setKeyboard(keyboardRows);

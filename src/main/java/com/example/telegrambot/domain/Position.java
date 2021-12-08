@@ -10,7 +10,7 @@ public enum Position {
     INPUT_NUMBER_FOR_REMOVE,
 
     // output data of lessons
-    LEARN_THE_LESSONS_OF_THE_DAY,
+    SELECTION_OF_THE_DAY_FOR_INPUT,
 
     // input data of teacher
     INPUT_TEACHER_FIRSTNAME,
@@ -18,6 +18,8 @@ public enum Position {
     INPUT_PHONE_NUMBER,
     INPUT_EMAIL,
     INPUT_POSITION,
+
+    INPUT_TEACHER_NUMBER_FOR_REMOVE,
 
     NONE
 }
