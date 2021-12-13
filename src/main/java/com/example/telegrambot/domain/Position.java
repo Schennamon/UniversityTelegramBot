@@ -1,6 +1,7 @@
 package com.example.telegrambot.domain;
 
 public enum Position {
+
     // input data of lessons
     INPUT_LESSON,
     INPUT_FORMAT,
@@ -18,8 +19,17 @@ public enum Position {
     INPUT_PHONE_NUMBER,
     INPUT_EMAIL,
     INPUT_POSITION,
-
     INPUT_TEACHER_NUMBER_FOR_REMOVE,
+
+    INPUT_TEACHER_NUMBER_FOR_EDIT,
+    INPUT_CHOICE_FOR_EDIT,
+
+    // input data for edit teachers
+    EDIT_FIRST_NAME,
+    EDIT_LAST_NAME,
+    EDIT_POSITION,
+    EDIT_PHONE_NUMBER,
+    EDIT_EMAIL,
 
     NONE
 }

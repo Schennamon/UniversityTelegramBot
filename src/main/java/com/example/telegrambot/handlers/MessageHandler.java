@@ -26,6 +26,8 @@ public class MessageHandler implements Handler<Message>{
     private final Lesson lesson;
     private final Cache cache;
 
+    private Teacher teacherEdit;
+
     public MessageHandler(MessageSender messageSender, KeyboardHandler keyboardHandler, Cache cache, Lesson lesson, PostRepository postRepository, UserRepository userRepository, TeacherRepository teacherRepository) {
         this.messageSender = messageSender;
         this.keyboardHandler = keyboardHandler;
@@ -56,6 +58,16 @@ public class MessageHandler implements Handler<Message>{
                 sb.append(printLesson.getLink() + "\n");
                 count++;
             }
+        }
+    }
+
+    private void outputTeachersList(Iterable<Teacher> teachers, StringBuilder sb){
+        int count = 1;
+        for(Teacher printTeacher : teachers){
+            sb.append("\n" + count + ". " + printTeacher.getLastName() + " " + printTeacher.getFirstName() +
+                    ", " + printTeacher.getPosition() + ", " + printTeacher.getPhoneNumber() +
+                    ", " + printTeacher.getEmail());
+            count++;
         }
     }
 
@@ -195,13 +207,91 @@ public class MessageHandler implements Handler<Message>{
                         userRepository.save(user);
                         sm.setText("Преподаватель был удалён из списка");
                     }
+                    // Position for selecting an item to edit
+                    case INPUT_TEACHER_NUMBER_FOR_EDIT -> {
+                        int count = 1;
+                        HashMap<Integer, Long> hashMap = new HashMap<>();
+                        var num = Integer.parseInt(message.getText());
+                        Iterable<Teacher> teachers = teacherRepository.findAll();
+                        for (Teacher teacher : teachers) {
+                            hashMap.put(count, teacher.getId());
+                            count++;
+                        }
+                        teacherEdit = teacherRepository.findById(hashMap.get(num)).orElseThrow();
+
+                        user.setPosition(Position.INPUT_CHOICE_FOR_EDIT);
+                        userRepository.save(user);
+                        sm.setText("Что вы хотите изменить?");
+                    }
+                    case INPUT_CHOICE_FOR_EDIT -> {
+                        if (message.getText().toLowerCase(Locale.ROOT).equals("имя")){
+                            user.setPosition(Position.EDIT_FIRST_NAME);
+                            userRepository.save(user);
+                            sm.setText("Введите новое имя:");
+                        } else if (message.getText().toLowerCase(Locale.ROOT).equals("фамилия")){
+                            user.setPosition(Position.EDIT_LAST_NAME);
+                            userRepository.save(user);
+                            sm.setText("Введите новую фамилию:");
+                        } else if (message.getText().toLowerCase(Locale.ROOT).equals("должность")){
+                            user.setPosition(Position.EDIT_POSITION);
+                            userRepository.save(user);
+                            sm.setText("Введите новую должность:");
+                        } else if (message.getText().toLowerCase(Locale.ROOT).equals("номер телефона")){
+                            user.setPosition(Position.EDIT_PHONE_NUMBER);
+                            userRepository.save(user);
+                            sm.setText("Введите новый номер телефона:");
+                        } else if (message.getText().toLowerCase(Locale.ROOT).equals("почту")){
+                            user.setPosition(Position.EDIT_EMAIL);
+                            userRepository.save(user);
+                            sm.setText("Введите новую почту:");
+                        } else{
+                            user.setPosition(Position.INPUT_CHOICE_FOR_EDIT);
+                            userRepository.save(user);
+                            sm.setText("Введите корректные данные:");
+                        }
+                    }
+                    case EDIT_FIRST_NAME -> {
+                        teacherEdit.setFirstName(message.getText());
+                        user.setPosition(Position.NONE);
+                        teacherRepository.save(teacherEdit);
+                        userRepository.save(user);
+                        sm.setText("Данные успешно отредактированы!");
+                    }
+                    case EDIT_LAST_NAME -> {
+                        teacherEdit.setLastName(message.getText());
+                        user.setPosition(Position.NONE);
+                        teacherRepository.save(teacherEdit);
+                        userRepository.save(user);
+                        sm.setText("Данные успешно отредактированы!");
+                    }
+                    case EDIT_POSITION -> {
+                        teacherEdit.setPosition(message.getText());
+                        user.setPosition(Position.NONE);
+                        teacherRepository.save(teacherEdit);
+                        userRepository.save(user);
+                        sm.setText("Данные успешно отредактированы!");
+                    }
+                    case EDIT_PHONE_NUMBER -> {
+                        teacherEdit.setPhoneNumber(message.getText());
+                        user.setPosition(Position.NONE);
+                        teacherRepository.save(teacherEdit);
+                        userRepository.save(user);
+                        sm.setText("Данные успешно отредактированы!");
+                    }
+                    case EDIT_EMAIL -> {
+                        teacherEdit.setEmail(message.getText());
+                        user.setPosition(Position.NONE);
+                        teacherRepository.save(teacherEdit);
+                        userRepository.save(user);
+                        sm.setText("Данные успешно отредактированы!");
+                    }
                 }
             }
 
             if (message.getText().equals("/start")) {
                 sm.setText("Welcome to bot!");
             }
-            if (message.getText().equals("/add")) {
+            else if (message.getText().equals("/add")) {
                 if(user.isStatus()) {
                     user.setPosition(Position.INPUT_LESSON);
                     userRepository.save(user);
@@ -210,7 +300,7 @@ public class MessageHandler implements Handler<Message>{
                     sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
             }
-            if (message.getText().equals("/all")) {
+            else if (message.getText().equals("/all")) {
                 Iterable<Lesson> lessons = postRepository.findAll();
                 StringBuilder sb = new StringBuilder();
 
@@ -223,7 +313,7 @@ public class MessageHandler implements Handler<Message>{
 
                 sm.setText(sb.toString());
             }
-            if (message.getText().equals("/remove")) {
+            else if (message.getText().equals("/remove")) {
                 if(user.isStatus()) {
                     int count = 1;
                     var sb = new StringBuilder();
@@ -241,12 +331,12 @@ public class MessageHandler implements Handler<Message>{
                     sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
             }
-            if (message.getText().equals("/day")) {
+            else if (message.getText().equals("/day")) {
                 user.setPosition(Position.SELECTION_OF_THE_DAY_FOR_INPUT);
                 userRepository.save(user);
                 sm.setText("Введите день, чтобы узнать пары: ");
             }
-            if(message.getText().equals("/add_teacher")){
+            else if(message.getText().equals("/add_teacher")){
                 if(user.isStatus()) {
                     user.setPosition(Position.INPUT_TEACHER_FIRSTNAME);
                     userRepository.save(user);
@@ -255,20 +345,15 @@ public class MessageHandler implements Handler<Message>{
                     sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
                 }
             }
-            if(message.getText().equals("/all_teachers")){
+            else if(message.getText().equals("/all_teachers")){
                 int count = 1;
                 var sb = new StringBuilder();
                 Iterable<Teacher> teachers = teacherRepository.findAll();
 
-                for(Teacher printTeacher : teachers){
-                    sb.append("\n" + count + ". " + printTeacher.getLastName() + " " + printTeacher.getFirstName() +
-                            ", " + printTeacher.getPosition() + ", " + printTeacher.getPhoneNumber() +
-                            ", " + printTeacher.getEmail());
-                    count++;
-                }
+                outputTeachersList(teachers, sb);
                 sm.setText(sb.toString());
             }
-            if(message.getText().equals("/remove_teacher")){
+            else if(message.getText().equals("/remove_teacher")){
                 if (user.isStatus()) {
                     int count = 1;
                     var sb = new StringBuilder();
@@ -277,12 +362,21 @@ public class MessageHandler implements Handler<Message>{
                     userRepository.save(user);
 
                     sb.append("Выберите преподавателя, которого хотите удалить: \n");
-                    for(Teacher printTeacher : teachers){
-                        sb.append("\n" + count + ". " + printTeacher.getLastName() + " " + printTeacher.getFirstName() +
-                                ", " + printTeacher.getPosition() + ", " + printTeacher.getPhoneNumber() +
-                                ", " + printTeacher.getEmail());
-                        count++;
-                    }
+                    outputTeachersList(teachers, sb);
+                    sm.setText(sb.toString());
+                } else {
+                    sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");
+                }
+            }
+            else if(message.getText().equals("/edit_teacher")) {
+                if (user.isStatus()) {
+                    var sb = new StringBuilder();
+                    Iterable<Teacher> teachers = teacherRepository.findAll();
+                    user.setPosition(Position.INPUT_TEACHER_NUMBER_FOR_EDIT);
+                    userRepository.save(user);
+
+                    sb.append("Выберите преподавателя, которого хотите редактировать: \n");
+                    outputTeachersList(teachers, sb);
                     sm.setText(sb.toString());
                 } else {
                     sm.setText("Вы не обладаете правами администратора для выполнения данной процедуры.");

@@ -40,6 +40,22 @@ public class KeyboardHandler{
             markup.setResizeKeyboard(true);
             sm.setReplyMarkup(markup);
         }
+        else if(user.getPosition().equals(Position.INPUT_CHOICE_FOR_EDIT)){
+            var markup = new ReplyKeyboardMarkup();
+            var keyboardRows = new ArrayList<KeyboardRow>();
+            var row1 = new KeyboardRow();
+            var row2 = new KeyboardRow();
+            row1.add("Имя");
+            row1.add("Фамилия");
+            row1.add("Дожлность");
+            row2.add("Номер телефона");
+            row2.add("Почту");
+            keyboardRows.add(row1);
+            keyboardRows.add(row2);
+            markup.setKeyboard(keyboardRows);
+            markup.setResizeKeyboard(true);
+            sm.setReplyMarkup(markup);
+        }
         else {
             var markup = new ReplyKeyboardMarkup();
             var keyboardRows = new ArrayList<KeyboardRow>();
@@ -52,6 +68,7 @@ public class KeyboardHandler{
             row2.add("/remove");
             row2.add("/add_teacher");
             row2.add("/remove_teacher");
+            row2.add("/edit_teacher");
             keyboardRows.add(row1);
             keyboardRows.add(row2);
             markup.setKeyboard(keyboardRows);
